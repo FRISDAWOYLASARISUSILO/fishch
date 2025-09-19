@@ -43,97 +43,82 @@ local SkinCratesList = {
     "Ghosts"
 }
 
--- Skin Crate Purchase Data (you may need to adjust these based on actual game data)
+-- Skin Crate Purchase Data (based on actual game structure)
 local SkinCrateData = {
     ["Moosewood"] = {
-        price = 100, -- example price
-        currency = "C$", -- or "R$" for Robux
-        remote = "buySkinCrate",
-        id = "moosewood_crate"
+        price = 100, -- adjust prices based on actual game
+        currency = "C$",
+        id = "Moosewood"
     },
     ["Desolate"] = {
         price = 150,
         currency = "C$",
-        remote = "buySkinCrate", 
-        id = "desolate_crate"
+        id = "Desolate"
     },
     ["Cthulu"] = {
         price = 300,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "cthulu_crate"
+        id = "Cthulu"
     },
     ["Ancient"] = {
         price = 500,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "ancient_crate"
+        id = "Ancient"
     },
     ["Mariana's"] = {
         price = 400,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "marianas_crate"
+        id = "Mariana's"
     },
     ["Cosmetic Case"] = {
         price = 75,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "cosmetic_case"
+        id = "Cosmetic Case"
     },
     ["Cosmetic Case Legendary"] = {
         price = 250,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "cosmetic_case_legendary"
+        id = "Cosmetic Case Legendary"
     },
     ["Atlantis"] = {
         price = 600,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "atlantis_crate"
+        id = "Atlantis"
     },
     ["Cursed"] = {
         price = 350,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "cursed_crate"
+        id = "Cursed"
     },
     ["Cultist"] = {
         price = 275,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "cultist_crate"
+        id = "Cultist"
     },
     ["Coral"] = {
         price = 125,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "coral_crate"
+        id = "Coral"
     },
     ["Friendly"] = {
         price = 80,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "friendly_crate"
+        id = "Friendly"
     },
     ["Red Marlins"] = {
         price = 200,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "red_marlins_crate"
+        id = "Red Marlins"
     },
     ["Midas' Mates"] = {
         price = 450,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "midas_mates_crate"
+        id = "Midas' Mates"
     },
     ["Ghosts"] = {
         price = 300,
         currency = "C$",
-        remote = "buySkinCrate",
-        id = "ghosts_crate"
+        id = "Ghosts"
     }
 }
 
@@ -174,59 +159,108 @@ local function purchaseSkinCrate(crateName, quantity)
         return false
     end
     
+    print("🛒 [SKIN CRATE] Attempting to purchase " .. quantity .. "x " .. crateName)
+    
     pcall(function()
         local totalCost = crateData.price * quantity
         local currentCurrency = getPlayerCurrency()
+        
+        print("💰 [SKIN CRATE] Cost: " .. totalCost .. " " .. crateData.currency .. " | Current: " .. currentCurrency)
         
         if currentCurrency < totalCost then
             warn("💰 [SKIN CRATE] Insufficient funds! Need: " .. totalCost .. " " .. crateData.currency)
             return false
         end
         
-        -- Try different remote event patterns
-        local remoteEvents = {
-            ReplicatedStorage:FindFirstChild("events"),
-            ReplicatedStorage:FindFirstChild("Events"),
-            ReplicatedStorage:FindFirstChild("Remotes"),
-            ReplicatedStorage:FindFirstChild("RemoteEvents")
-        }
+        -- Get the correct Net package structure
+        local netPackage = ReplicatedStorage:WaitForChild("packages"):WaitForChild("Net")
+        local purchaseRemote = netPackage:WaitForChild("RF"):WaitForChild("SkinCrates"):WaitForChild("Purchase")
         
-        for _, eventFolder in pairs(remoteEvents) do
-            if eventFolder then
-                local buyRemote = eventFolder:FindFirstChild(crateData.remote) or 
-                                eventFolder:FindFirstChild("buyCrate") or
-                                eventFolder:FindFirstChild("purchaseCrate") or
-                                eventFolder:FindFirstChild("buySkincrate")
+        if purchaseRemote then
+            print("🔍 [SKIN CRATE] Found purchase remote: " .. purchaseRemote:GetFullName())
+            
+            -- Try different purchase patterns based on actual game structure
+            local purchasePatterns = {
+                -- Pattern 1: Direct crate name and quantity
+                function() 
+                    local result = purchaseRemote:InvokeServer(crateName, quantity)
+                    print("📡 [SKIN CRATE] Pattern 1 result: " .. tostring(result))
+                    return result
+                end,
                 
-                if buyRemote then
-                    -- Try different purchase patterns
-                    local purchasePatterns = {
-                        function() buyRemote:FireServer(crateData.id, quantity) end,
-                        function() buyRemote:FireServer(crateName, quantity) end,
-                        function() buyRemote:FireServer(crateData.id, quantity, crateData.currency) end,
-                        function() buyRemote:FireServer({crate = crateData.id, amount = quantity}) end,
-                        function() buyRemote:FireServer({crateName = crateName, quantity = quantity}) end
-                    }
-                    
-                    for _, pattern in pairs(purchasePatterns) do
-                        local success, err = pcall(pattern)
-                        if success then
-                            print("✅ [SKIN CRATE] Purchase successful: " .. quantity .. "x " .. crateName)
-                            purchaseStats.successfulPurchases = purchaseStats.successfulPurchases + 1
-                            purchaseStats.totalSpent = purchaseStats.totalSpent + totalCost
-                            return true
-                        end
+                -- Pattern 2: Crate ID and quantity
+                function() 
+                    local result = purchaseRemote:InvokeServer(crateData.id, quantity)
+                    print("📡 [SKIN CRATE] Pattern 2 result: " .. tostring(result))
+                    return result
+                end,
+                
+                -- Pattern 3: Table format
+                function() 
+                    local result = purchaseRemote:InvokeServer({
+                        crate = crateName,
+                        quantity = quantity
+                    })
+                    print("📡 [SKIN CRATE] Pattern 3 result: " .. tostring(result))
+                    return result
+                end,
+                
+                -- Pattern 4: With currency type
+                function() 
+                    local result = purchaseRemote:InvokeServer(crateName, quantity, crateData.currency)
+                    print("📡 [SKIN CRATE] Pattern 4 result: " .. tostring(result))
+                    return result
+                end,
+                
+                -- Pattern 5: Individual purchases (if bulk not supported)
+                function()
+                    local results = {}
+                    for i = 1, quantity do
+                        local result = purchaseRemote:InvokeServer(crateName, 1)
+                        table.insert(results, result)
+                        if not result then break end
+                        task.wait(0.1) -- Small delay between individual purchases
+                    end
+                    print("📡 [SKIN CRATE] Pattern 5 results: " .. #results .. " successful")
+                    return #results > 0
+                end
+            }
+            
+            for i, pattern in pairs(purchasePatterns) do
+                local patternSuccess, result = pcall(pattern)
+                if patternSuccess and result then
+                    print("✅ [SKIN CRATE] Purchase successful using pattern " .. i .. ": " .. quantity .. "x " .. crateName)
+                    purchaseStats.successfulPurchases = purchaseStats.successfulPurchases + 1
+                    purchaseStats.totalSpent = purchaseStats.totalSpent + totalCost
+                    success = true
+                    break
+                else
+                    print("⚠️ [SKIN CRATE] Pattern " .. i .. " failed: " .. tostring(result))
+                end
+            end
+        else
+            warn("❌ [SKIN CRATE] Could not find SkinCrates Purchase remote!")
+            
+            -- Fallback: Try to find alternative remotes
+            print("🔍 [SKIN CRATE] Searching for alternative remotes...")
+            local function searchRemotes(parent, depth)
+                if depth > 3 then return end
+                for _, child in pairs(parent:GetChildren()) do
+                    if child.Name:lower():find("purchase") or child.Name:lower():find("buy") or child.Name:lower():find("crate") then
+                        print("🔍 [SKIN CRATE] Found potential remote: " .. child:GetFullName())
+                    end
+                    if child:GetChildren() and #child:GetChildren() > 0 then
+                        searchRemotes(child, depth + 1)
                     end
                 end
             end
+            searchRemotes(netPackage, 0)
         end
-        
-        warn("❌ [SKIN CRATE] Failed to find purchase remote for: " .. crateName)
-        return false
     end)
     
     if not success then
         purchaseStats.failedPurchases = purchaseStats.failedPurchases + 1
+        warn("❌ [SKIN CRATE] Purchase failed for: " .. crateName)
     end
     
     purchaseStats.totalPurchases = purchaseStats.totalPurchases + 1
@@ -538,7 +572,54 @@ UtilitySection:NewButton("📊 Print Stats to Console", "Print detailed stats to
     printPurchaseStats()
 end)
 
-UtilitySection:NewButton("🛑 Emergency Stop", "Stop all auto purchase immediately", function()
+UtilitySection:NewButton("� Debug Remote Structure", "Check SkinCrate remote structure", function()
+    print("\n🔍 [DEBUG] Checking SkinCrate remote structure...")
+    pcall(function()
+        local netPackage = ReplicatedStorage:FindFirstChild("packages")
+        if netPackage then
+            print("✅ Found packages folder")
+            local net = netPackage:FindFirstChild("Net")
+            if net then
+                print("✅ Found Net folder")
+                local rf = net:FindFirstChild("RF")
+                if rf then
+                    print("✅ Found RF folder")
+                    local skinCrates = rf:FindFirstChild("SkinCrates")
+                    if skinCrates then
+                        print("✅ Found SkinCrates folder")
+                        for _, remote in pairs(skinCrates:GetChildren()) do
+                            print("  📡 Remote: " .. remote.Name .. " (" .. remote.ClassName .. ")")
+                        end
+                    else
+                        print("❌ SkinCrates folder not found in RF")
+                        print("Available RF children:")
+                        for _, child in pairs(rf:GetChildren()) do
+                            print("  📁 " .. child.Name)
+                        end
+                    end
+                else
+                    print("❌ RF folder not found")
+                end
+            else
+                print("❌ Net folder not found")
+            end
+        else
+            print("❌ packages folder not found")
+        end
+    end)
+end)
+
+UtilitySection:NewButton("🧪 Test Purchase (Single)", "Test purchase 1 selected crate", function()
+    print("🧪 [TEST] Testing single purchase of " .. flags['selectedcrate'])
+    local result = purchaseSkinCrate(flags['selectedcrate'], 1)
+    if result then
+        print("✅ [TEST] Purchase test successful!")
+    else
+        print("❌ [TEST] Purchase test failed!")
+    end
+end)
+
+UtilitySection:NewButton("�🛑 Emergency Stop", "Stop all auto purchase immediately", function()
     flags['autoskincrate'] = false
     stopAutoPurchase()
     print("🛑 [SKIN CRATE] Emergency stop activated!")
