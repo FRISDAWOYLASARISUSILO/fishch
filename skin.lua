@@ -121,6 +121,22 @@ end
 -- Function to find purchase remote (improved search)
 local function findPurchaseRemote()
     local possiblePaths = {
+        -- Try to find RequestSpin remote (from console output)
+        function()
+            local packages = ReplicatedStorage:FindFirstChild("packages")
+            if packages then
+                local net = packages:FindFirstChild("Net")
+                if net then
+                    for _, child in pairs(net:GetDescendants()) do
+                        if child.Name == "RequestSpin" and (child.ClassName == "RemoteFunction" or child.ClassName == "RemoteEvent") then
+                            print("🔍 [SKIN CRATE] Found RequestSpin remote: " .. child:GetFullName())
+                            return child
+                        end
+                    end
+                end
+            end
+        end,
+        
         -- Original path from data.txt
         function() 
             local packages = ReplicatedStorage:FindFirstChild("packages")
@@ -200,52 +216,117 @@ local function purchaseSkinCrate(crateName, quantity)
         
         if purchaseRemote then
             
-            -- Try different purchase patterns based on actual game structure
-            local purchasePatterns = {
-                -- Pattern 1: Direct crate name and quantity
-                function() 
-                    local result = purchaseRemote:InvokeServer(crateName, quantity)
-                    print("📡 [SKIN CRATE] Pattern 1 result: " .. tostring(result))
-                    return result
-                end,
-                
-                -- Pattern 2: Crate ID and quantity
-                function() 
-                    local result = purchaseRemote:InvokeServer(crateData.id, quantity)
-                    print("📡 [SKIN CRATE] Pattern 2 result: " .. tostring(result))
-                    return result
-                end,
-                
-                -- Pattern 3: Table format
-                function() 
-                    local result = purchaseRemote:InvokeServer({
-                        crate = crateName,
-                        quantity = quantity
-                    })
-                    print("📡 [SKIN CRATE] Pattern 3 result: " .. tostring(result))
-                    return result
-                end,
-                
-                -- Pattern 4: With currency type
-                function() 
-                    local result = purchaseRemote:InvokeServer(crateName, quantity, crateData.currency)
-                    print("📡 [SKIN CRATE] Pattern 4 result: " .. tostring(result))
-                    return result
-                end,
-                
-                -- Pattern 5: Individual purchases (if bulk not supported)
-                function()
-                    local results = {}
-                    for i = 1, quantity do
-                        local result = purchaseRemote:InvokeServer(crateName, 1)
-                        table.insert(results, result)
-                        if not result then break end
-                        task.wait(0.1) -- Small delay between individual purchases
+            -- Check if this is RequestSpin remote and use specific patterns
+            local isRequestSpin = purchaseRemote.Name == "RequestSpin"
+            local purchasePatterns = {}
+            
+            if isRequestSpin then
+                print("🎯 [SKIN CRATE] Using RequestSpin patterns for: " .. crateName)
+                purchasePatterns = {
+                    -- Pattern 1: RequestSpin with crate name (most likely for SkinCrates)
+                    function()
+                        local result = purchaseRemote:InvokeServer(crateName)
+                        print("📡 [SKIN CRATE] RequestSpin Pattern 1 result: " .. tostring(result))
+                        return result
+                    end,
+                    
+                    -- Pattern 2: RequestSpin with crate ID
+                    function()
+                        local result = purchaseRemote:InvokeServer(crateData.id)
+                        print("📡 [SKIN CRATE] RequestSpin Pattern 2 result: " .. tostring(result))
+                        return result
+                    end,
+                    
+                    -- Pattern 3: RequestSpin with quantity parameter
+                    function()
+                        for i = 1, quantity do
+                            local result = purchaseRemote:InvokeServer(crateName)
+                            if not result then 
+                                print("📡 [SKIN CRATE] RequestSpin Pattern 3 failed at iteration " .. i)
+                                return false 
+                            end
+                            task.wait(0.1)
+                        end
+                        print("📡 [SKIN CRATE] RequestSpin Pattern 3 completed " .. quantity .. " spins")
+                        return true
+                    end,
+                    
+                    -- Pattern 4: RequestSpin with table format
+                    function()
+                        local result = purchaseRemote:InvokeServer({crate = crateName})
+                        print("📡 [SKIN CRATE] RequestSpin Pattern 4 result: " .. tostring(result))
+                        return result
+                    end,
+                    
+                    -- Pattern 5: Try different crate name formats
+                    function()
+                        local crateVariations = {
+                            crateName,
+                            crateName:lower(),
+                            crateName:upper(),
+                            crateName:gsub(" ", ""),
+                            crateName:gsub("'", "")
+                        }
+                        
+                        for _, variation in pairs(crateVariations) do
+                            local result = purchaseRemote:InvokeServer(variation)
+                            if result then
+                                print("📡 [SKIN CRATE] RequestSpin Pattern 5 success with: " .. variation)
+                                return true
+                            end
+                        end
+                        print("📡 [SKIN CRATE] RequestSpin Pattern 5 failed all variations")
+                        return false
                     end
-                    print("📡 [SKIN CRATE] Pattern 5 results: " .. #results .. " successful")
-                    return #results > 0
-                end
-            }
+                }
+            else
+                -- Original patterns for other remotes
+                purchasePatterns = {
+                    -- Pattern 1: Direct crate name and quantity
+                    function() 
+                        local result = purchaseRemote:InvokeServer(crateName, quantity)
+                        print("📡 [SKIN CRATE] Pattern 1 result: " .. tostring(result))
+                        return result
+                    end,
+                    
+                    -- Pattern 2: Crate ID and quantity
+                    function() 
+                        local result = purchaseRemote:InvokeServer(crateData.id, quantity)
+                        print("📡 [SKIN CRATE] Pattern 2 result: " .. tostring(result))
+                        return result
+                    end,
+                    
+                    -- Pattern 3: Table format
+                    function() 
+                        local result = purchaseRemote:InvokeServer({
+                            crate = crateName,
+                            quantity = quantity
+                        })
+                        print("📡 [SKIN CRATE] Pattern 3 result: " .. tostring(result))
+                        return result
+                    end,
+                    
+                    -- Pattern 4: With currency type
+                    function() 
+                        local result = purchaseRemote:InvokeServer(crateName, quantity, crateData.currency)
+                        print("📡 [SKIN CRATE] Pattern 4 result: " .. tostring(result))
+                        return result
+                    end,
+                    
+                    -- Pattern 5: Individual purchases (if bulk not supported)
+                    function()
+                        local results = {}
+                        for i = 1, quantity do
+                            local result = purchaseRemote:InvokeServer(crateName, 1)
+                            table.insert(results, result)
+                            if not result then break end
+                            task.wait(0.1) -- Small delay between individual purchases
+                        end
+                        print("📡 [SKIN CRATE] Pattern 5 results: " .. #results .. " successful")
+                        return #results > 0
+                    end
+                }
+            end
             
             for i, pattern in pairs(purchasePatterns) do
                 local patternSuccess, result = pcall(pattern)
@@ -636,6 +717,35 @@ UtilitySection:NewButton("🔄 Restart Auto Purchase", "Restart the auto purchas
     task.wait(1)
     flags['autoskincrate'] = true
     print("🔄 [SKIN CRATE] Auto purchase restarted!")
+end)
+
+UtilitySection:NewButton("🔍 Find All Net Remotes", "Search all remotes in Net package", function()
+    print("\n🔍 [DEBUG] Searching all remotes in Net package...")
+    pcall(function()
+        local packages = ReplicatedStorage:FindFirstChild("packages")
+        if packages then
+            local net = packages:FindFirstChild("Net")
+            if net then
+                print("📡 Available remotes in Net package:")
+                for _, remote in pairs(net:GetDescendants()) do
+                    if remote.ClassName == "RemoteFunction" or remote.ClassName == "RemoteEvent" then
+                        local relativePath = remote:GetFullName():gsub("ReplicatedStorage%.packages%.Net%.", "")
+                        print("  📡 " .. remote.Name .. " (" .. remote.ClassName .. ") - " .. relativePath)
+                        
+                        -- Check if name contains skin/crate related keywords
+                        local name = remote.Name:lower()
+                        if name:find("skin") or name:find("crate") or name:find("spin") or name:find("purchase") or name:find("buy") then
+                            print("    🎯 POTENTIAL MATCH: " .. remote.Name)
+                        end
+                    end
+                end
+            else
+                print("❌ Net package not found")
+            end
+        else
+            print("❌ packages not found")
+        end
+    end)
 end)
 
 -- Initial stats display
