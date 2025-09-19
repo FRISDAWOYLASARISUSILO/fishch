@@ -43,81 +43,51 @@ local SkinCratesList = {
     "Ghosts"
 }
 
--- Skin Crate Purchase Data (based on actual game structure)
+-- Skin Crate Purchase Data (let game handle pricing)
 local SkinCrateData = {
     ["Moosewood"] = {
-        price = 100, -- adjust prices based on actual game
-        currency = "C$",
         id = "Moosewood"
     },
     ["Desolate"] = {
-        price = 150,
-        currency = "C$",
         id = "Desolate"
     },
     ["Cthulu"] = {
-        price = 300,
-        currency = "C$",
         id = "Cthulu"
     },
     ["Ancient"] = {
-        price = 500,
-        currency = "C$",
         id = "Ancient"
     },
     ["Mariana's"] = {
-        price = 400,
-        currency = "C$",
         id = "Mariana's"
     },
     ["Cosmetic Case"] = {
-        price = 75,
-        currency = "C$",
         id = "Cosmetic Case"
     },
     ["Cosmetic Case Legendary"] = {
-        price = 250,
-        currency = "C$",
         id = "Cosmetic Case Legendary"
     },
     ["Atlantis"] = {
-        price = 600,
-        currency = "C$",
         id = "Atlantis"
     },
     ["Cursed"] = {
-        price = 350,
-        currency = "C$",
         id = "Cursed"
     },
     ["Cultist"] = {
-        price = 275,
-        currency = "C$",
         id = "Cultist"
     },
     ["Coral"] = {
-        price = 125,
-        currency = "C$",
         id = "Coral"
     },
     ["Friendly"] = {
-        price = 80,
-        currency = "C$",
         id = "Friendly"
     },
     ["Red Marlins"] = {
-        price = 200,
-        currency = "C$",
         id = "Red Marlins"
     },
     ["Midas' Mates"] = {
-        price = 450,
-        currency = "C$",
         id = "Midas' Mates"
     },
     ["Ghosts"] = {
-        price = 300,
-        currency = "C$",
         id = "Ghosts"
     }
 }
@@ -127,7 +97,6 @@ local purchaseStats = {
     totalPurchases = 0,
     successfulPurchases = 0,
     failedPurchases = 0,
-    totalSpent = 0,
     currentSession = 0
 }
 
@@ -162,15 +131,6 @@ local function purchaseSkinCrate(crateName, quantity)
     print("🛒 [SKIN CRATE] Attempting to purchase " .. quantity .. "x " .. crateName)
     
     pcall(function()
-        local totalCost = crateData.price * quantity
-        local currentCurrency = getPlayerCurrency()
-        
-        print("💰 [SKIN CRATE] Cost: " .. totalCost .. " " .. crateData.currency .. " | Current: " .. currentCurrency)
-        
-        if currentCurrency < totalCost then
-            warn("💰 [SKIN CRATE] Insufficient funds! Need: " .. totalCost .. " " .. crateData.currency)
-            return false
-        end
         
         -- Get the correct Net package structure
         local netPackage = ReplicatedStorage:WaitForChild("packages"):WaitForChild("Net")
@@ -231,7 +191,7 @@ local function purchaseSkinCrate(crateName, quantity)
                 if patternSuccess and result then
                     print("✅ [SKIN CRATE] Purchase successful using pattern " .. i .. ": " .. quantity .. "x " .. crateName)
                     purchaseStats.successfulPurchases = purchaseStats.successfulPurchases + 1
-                    purchaseStats.totalSpent = purchaseStats.totalSpent + totalCost
+                    -- Game will handle the currency deduction
                     success = true
                     break
                 else
@@ -327,8 +287,7 @@ function printPurchaseStats()
     print("🎁 Total Purchases: " .. purchaseStats.totalPurchases)
     print("✅ Successful: " .. purchaseStats.successfulPurchases)
     print("❌ Failed: " .. purchaseStats.failedPurchases)
-    print("💰 Total Spent: " .. purchaseStats.totalSpent)
-    print("📈 Success Rate: " .. math.floor((purchaseStats.successfulPurchases / math.max(purchaseStats.totalPurchases, 1)) * 100) .. "%")
+    print(" Success Rate: " .. math.floor((purchaseStats.successfulPurchases / math.max(purchaseStats.totalPurchases, 1)) * 100) .. "%")
     print("🔄 Current Session: " .. purchaseStats.currentSession)
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 end
@@ -362,9 +321,8 @@ local function listSkinCrates()
     print("\n📦 [AVAILABLE SKIN CRATES]")
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
     for i, crateName in pairs(SkinCratesList) do
-        local crateData = SkinCrateData[crateName]
-        print(string.format("%2d. %-25s | %s%d %s", 
-            i, crateName, "", crateData.price, crateData.currency))
+        print(string.format("%2d. %-25s | Game will handle pricing", 
+            i, crateName))
     end
     print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 end
@@ -416,10 +374,7 @@ local StatsSection = StatsTab:NewSection("Purchase Statistics")
 -- Crate Selection Dropdown
 MainSection:NewDropdown("Select Skin Crate", "Choose which crate to purchase", SkinCratesList, function(selectedCrate)
     flags['selectedcrate'] = selectedCrate
-    local crateData = SkinCrateData[selectedCrate]
-    if crateData then
-        print("🎁 [SKIN CRATE] Selected: " .. selectedCrate .. " (Price: " .. crateData.price .. " " .. crateData.currency .. ")")
-    end
+    print("🎁 [SKIN CRATE] Selected: " .. selectedCrate .. " (Game will handle pricing)")
 end)
 
 -- Quantity Slider
@@ -522,8 +477,7 @@ local function updateStatsDisplay()
     StatsSection:NewLabel("🎁 Total Purchases: " .. purchaseStats.totalPurchases)
     StatsSection:NewLabel("✅ Successful: " .. purchaseStats.successfulPurchases)
     StatsSection:NewLabel("❌ Failed: " .. purchaseStats.failedPurchases)
-    StatsSection:NewLabel("💰 Total Spent: " .. purchaseStats.totalSpent .. " C$")
-    StatsSection:NewLabel("📈 Success Rate: " .. math.floor((purchaseStats.successfulPurchases / math.max(purchaseStats.totalPurchases, 1)) * 100) .. "%")
+    StatsSection:NewLabel(" Success Rate: " .. math.floor((purchaseStats.successfulPurchases / math.max(purchaseStats.totalPurchases, 1)) * 100) .. "%")
     StatsSection:NewLabel("🔄 Current Session: " .. purchaseStats.currentSession)
 end
 
@@ -533,7 +487,6 @@ StatsSection:NewButton("🔄 Reset Statistics", "Reset all purchase statistics",
         totalPurchases = 0,
         successfulPurchases = 0,
         failedPurchases = 0,
-        totalSpent = 0,
         currentSession = 0
     }
     print("🔄 [SKIN CRATE] Statistics reset!")
@@ -554,8 +507,7 @@ InfoSection:NewLabel("📦 AVAILABLE SKIN CRATES")
 InfoSection:NewLabel("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 for i, crateName in pairs(SkinCratesList) do
-    local crateData = SkinCrateData[crateName]
-    InfoSection:NewLabel(string.format("%-20s | %d %s", crateName, crateData.price, crateData.currency))
+    InfoSection:NewLabel(string.format("%-20s | Game will handle pricing", crateName))
 end
 
 -- Quick List Button
