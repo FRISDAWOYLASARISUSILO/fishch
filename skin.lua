@@ -118,6 +118,69 @@ local function getPlayerCurrency()
     return 0
 end
 
+-- Function to find purchase remote (improved search)
+local function findPurchaseRemote()
+    local possiblePaths = {
+        -- Original path from data.txt
+        function() 
+            local packages = ReplicatedStorage:FindFirstChild("packages")
+            if packages then
+                local net = packages:FindFirstChild("Net")
+                if net then
+                    local rf = net:FindFirstChild("RF")
+                    if rf then
+                        local skinCrates = rf:FindFirstChild("SkinCrates")
+                        if skinCrates then
+                            return skinCrates:FindFirstChild("Purchase")
+                        end
+                    end
+                end
+            end
+        end,
+        
+        -- Alternative paths
+        function()
+            return ReplicatedStorage:FindFirstChild("RemoteEvents") and ReplicatedStorage.RemoteEvents:FindFirstChild("SkinCratePurchase")
+        end,
+        
+        function()
+            return ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("PurchaseSkinCrate")
+        end,
+        
+        function()
+            local events = ReplicatedStorage:FindFirstChild("Events")
+            if events then
+                return events:FindFirstChild("BuyCrate") or events:FindFirstChild("Purchase") or events:FindFirstChild("SkinCrate")
+            end
+        end,
+        
+        function()
+            -- Search for any remote with skin/crate in name
+            for _, child in pairs(ReplicatedStorage:GetDescendants()) do
+                if (child.ClassName == "RemoteFunction" or child.ClassName == "RemoteEvent") then
+                    local name = child.Name:lower()
+                    if (name:find("skin") and name:find("crate")) or 
+                       (name:find("crate") and name:find("buy")) or
+                       (name:find("crate") and name:find("purchase")) then
+                        print("🔍 [SKIN CRATE] Found potential remote: " .. child:GetFullName())
+                        return child
+                    end
+                end
+            end
+        end
+    }
+    
+    for i, pathFunc in pairs(possiblePaths) do
+        local remote = pathFunc()
+        if remote then
+            print("✅ [SKIN CRATE] Found purchase remote via path " .. i .. ": " .. remote:GetFullName())
+            return remote
+        end
+    end
+    
+    return nil
+end
+
 -- Function to purchase skin crate
 local function purchaseSkinCrate(crateName, quantity)
     local success = false
@@ -132,12 +195,10 @@ local function purchaseSkinCrate(crateName, quantity)
     
     pcall(function()
         
-        -- Get the correct Net package structure
-        local netPackage = ReplicatedStorage:WaitForChild("packages"):WaitForChild("Net")
-        local purchaseRemote = netPackage:WaitForChild("RF"):WaitForChild("SkinCrates"):WaitForChild("Purchase")
+        -- Use improved remote search function
+        local purchaseRemote = findPurchaseRemote()
         
         if purchaseRemote then
-            print("🔍 [SKIN CRATE] Found purchase remote: " .. purchaseRemote:GetFullName())
             
             -- Try different purchase patterns based on actual game structure
             local purchasePatterns = {
@@ -199,22 +260,9 @@ local function purchaseSkinCrate(crateName, quantity)
                 end
             end
         else
-            warn("❌ [SKIN CRATE] Could not find SkinCrates Purchase remote!")
-            
-            -- Fallback: Try to find alternative remotes
-            print("🔍 [SKIN CRATE] Searching for alternative remotes...")
-            local function searchRemotes(parent, depth)
-                if depth > 3 then return end
-                for _, child in pairs(parent:GetChildren()) do
-                    if child.Name:lower():find("purchase") or child.Name:lower():find("buy") or child.Name:lower():find("crate") then
-                        print("🔍 [SKIN CRATE] Found potential remote: " .. child:GetFullName())
-                    end
-                    if child:GetChildren() and #child:GetChildren() > 0 then
-                        searchRemotes(child, depth + 1)
-                    end
-                end
-            end
-            searchRemotes(netPackage, 0)
+            warn("❌ [SKIN CRATE] Could not find any SkinCrate purchase remote!")
+            print("🔍 [SKIN CRATE] Please check that you're in the correct game")
+            print("🔍 [SKIN CRATE] Try using 'Debug Remote Structure' button to see available remotes")
         end
     end)
     
@@ -557,6 +605,12 @@ UtilitySection:NewButton("� Debug Remote Structure", "Check SkinCrate remote s
             end
         else
             print("❌ packages folder not found")
+            print("Available ReplicatedStorage children:")
+            for _, child in pairs(ReplicatedStorage:GetChildren()) do
+                if child.Name:lower():find("net") or child.Name:lower():find("remote") or child.Name:lower():find("package") then
+                    print("  📁 " .. child.Name .. " (" .. child.ClassName .. ")")
+                end
+            end
         end
     end)
 end)
